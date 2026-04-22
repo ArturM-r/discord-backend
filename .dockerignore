@@ -1,0 +1,29 @@
+# git
+.git
+.gitignore
+
+# env
+.env
+.env.*
+
+# docs
+*.md
+LICENSE
+
+# ide
+.idea/
+.vscode/
+
+# os
+.DS_Store
+Thumbs.db
+
+# go artifacts
+*.test
+*.out
+vendor/
+
+# docker
+Dockerfile
+docker-compose.yml
+.dockerignore
