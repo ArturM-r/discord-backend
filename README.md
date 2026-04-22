@@ -25,19 +25,45 @@ migrations/        → SQL schema
 
 ## Quickstart
 
+### 1. Настрой .env
+
 ```bash
-# 1. DB
-createdb discord
-psql discord -f migrations/001_init.sql
-
-# 2. Env
 cp .env.example .env
-# edit .env if needed
-
-# 3. Run
-go mod tidy
-go run ./cmd/server
 ```
+
+`.env`:
+```env
+DATABASE_URL=postgres://<user>:<password>@postgres:5432/discord?sslmode=disable
+HMAC_KEY=<случайная строка>
+POSTGRES_USER=<user>
+POSTGRES_PASSWORD=<password>
+POSTGRES_DB=discord
+ADDR=:8080
+```
+
+### 2. Подними Docker
+
+```bash
+docker compose up --build -d
+```
+
+### 3. Примени миграцию
+
+```bash
+cat migrations/001_init.sql | docker compose exec -T postgres psql -U <user> -d discord
+```
+
+> Нужно сделать один раз. При повторном запуске таблицы уже есть.
+
+### 4. Проверь
+
+```bash
+curl -s -X POST http://localhost:8080/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alex","password":"secret"}' | jq .
+```
+
+---
 
 ## API
 
@@ -74,21 +100,47 @@ GET /ws/channels/{id}?token=<jwt>
 { "type": "presence", "payload": { "username": "alex", "online": true } }
 ```
 
-## Example (httpie)
+---
+
+## Примеры
 
 ```bash
 # register
-http POST :8080/api/register username=alex password=secret
+curl -s -X POST http://localhost:8080/api/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alex","password":"secret"}' | jq .
 
-# login → save token
-TOKEN=$(http POST :8080/api/login username=alex password=secret | jq -r .token)
+# login → сохрани токен
+TOKEN=$(curl -s -X POST http://localhost:8080/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"alex","password":"secret"}' | jq -r .token)
 
-# channels
-http :8080/api/channels Authorization:"Bearer $TOKEN"
+# список каналов
+curl -s http://localhost:8080/api/channels \
+  -H "Authorization: Bearer $TOKEN" | jq .
 
-# history
-http :8080/api/channels/1/messages Authorization:"Bearer $TOKEN"
+# история сообщений
+curl -s http://localhost:8080/api/channels/1/messages \
+  -H "Authorization: Bearer $TOKEN" | jq .
 
 # websocket
 websocat "ws://localhost:8080/ws/channels/1?token=$TOKEN"
+```
+
+---
+
+## Полезные команды
+
+```bash
+# логи
+docker compose logs -f api
+
+# перезапустить апи после изменений
+docker compose up --build -d api
+
+# зайти в базу
+docker compose exec postgres psql -U <user> -d discord
+
+# снести всё включая данные
+docker compose down -v
 ```
